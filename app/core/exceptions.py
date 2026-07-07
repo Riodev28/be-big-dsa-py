@@ -14,3 +14,6 @@ class CodeNotNormalizedError(Exception):
     """Throws when: code was not normalized before run another method"""
 
     pass
+
+class FailedDatabaseConnection(Exception):
+    """ Throws when: failed to connect to database """
