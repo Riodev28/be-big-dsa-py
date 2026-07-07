@@ -1,6 +1,7 @@
 from mongoengine import connect, disconnect, get_connection
 from .config import settings
 from .exceptions import FailedDatabaseConnection
+import anyio
 
 class Database():
         
@@ -16,7 +17,7 @@ class Database():
     async def ping(self):
         """ Verify if database is connected or not """
         try:
-            get_connection().admin.command("ping")
+            await anyio.to_thread.run_sync(lambda: get_connection().admin.command("ping"))
             return True
         except Exception:
             return False
