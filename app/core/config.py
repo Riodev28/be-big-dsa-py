@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     db_password: str
     mongo_url: str
     
+    jwt_secret_key: str
     algorithm: str = "HS512"
     token_expire: int = 30
 

@@ -14,3 +14,6 @@ format:
 check:
 	uv run ruff check
 
+generate-key:
+	python3 -c "import secrets; print(secrets.token_hex(64))"
+
