@@ -8,7 +8,7 @@ class TemporalComplexityAnalyzer:
     def __init__(self, code: NormalizedCode):
         self.code = code
 
-    def analyze(self):
+    def analyze(self) -> TemporalAnalysisReport:
         """Analyze big o notation complexity using the tree node and visitors"""
 
         tree = Parser.to_tree_node(self.code)
