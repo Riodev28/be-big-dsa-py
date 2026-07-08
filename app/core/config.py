@@ -6,6 +6,15 @@ class Settings(BaseSettings):
 
     cache_url: str
     ai_api_key: str
+    
+    db_name: str
+    db_user: str
+    db_password: str
+    mongo_url: str
+    
+    jwt_secret_key: str
+    algorithm: str = "HS512"
+    token_expire: int = 30
 
     class Config:
         env_file = ".env"
