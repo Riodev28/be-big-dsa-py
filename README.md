@@ -44,7 +44,8 @@ app/
     │   ├── parser.py           # Python AST parser wrapper
     │   ├── fingerprint.py      # Code fingerprint for cache keys
     │   ├── value_objects/      # NormalizedCode value object
-    │   └── visitors/           # Loop and recursion AST visitors
+    │   ├── visitors/           # Allocation / recursion AST visitors (spatial)
+    │   └── complexity/         # Symbolic Big O cost engine (temporal)
     ├── cache/
     │   ├── service.py          # Redis get/set abstraction
     │   ├── client.py           # Redis client factory
@@ -69,11 +70,14 @@ TemporalComplexityService
         │
         └─ Cache miss ──▶ TemporalComplexityAnalyzer (AST)
                                │
-                               ├─ LoopVisitors     → max loop depth
-                               └─ RecursionVisitors → recursive functions
-                               │
                                ▼
-                         infer Big O notation
+                     CostEvaluator (shared/ast/complexity)
+                       walks the tree and composes a symbolic
+                       Big O expression:
+                         • sequential loops add      → O(n + m)
+                         • nested loops multiply      → O(n²)
+                         • sorted()/membership/slices → O(n log n)
+                         • recursion (recursion-tree) → O(log n) … O(2^n)
                                │
                       (if explain_ai=true)
                                │
@@ -107,14 +111,44 @@ TemporalComplexityService
 {
   "analysis": {
     "time_complexity": "O(n²)",
+    "terms": ["n²"],
+    "variables": [{ "symbol": "n", "source": "range(n)" }],
     "max_loop_depth": 2,
-    "recursive": false
+    "loop_count": 2,
+    "recursive": false,
+    "recursion_kind": null
   },
   "ai": null
 }
 ```
 
+- `terms` — the additive terms of the Big O expression, biggest first (`["n²", "m"]` for `O(n² + m)`).
+- `variables` — each Big O symbol and the source expression it was resolved from.
+- `recursion_kind` — `linear`, `logarithmic`, `divide_and_conquer`, `polynomial`, `exponential` or `null`.
+
 Set `explain_ai: true` to include an LLM-generated explanation of the result.
+
+### What the analyzer detects
+
+| Code shape | Result |
+| ---------- | ------ |
+| one loop over `n` | `O(n)` |
+| two **sequential** loops over the same collection | `O(n)` |
+| two **sequential** loops over different collections | `O(n + m)` |
+| two **nested** loops | `O(n²)` (nested loops collapse to one variable) |
+| a nested pair followed by a separate loop | `O(n² + m)` |
+| `for _ in range(10)` (constant bound) | `O(1)` |
+| `sorted(x)` / `x.sort()` / `for x in sorted(...)` | `O(n log n)` |
+| `x in some_list` inside a loop | `O(n²)` |
+| linear recursion (`f(n - 1)`) | `O(n)` |
+| binary search (`f(n // 2)`) | `O(log n)` |
+| merge sort (two halved self-calls + linear merge) | `O(n log n)` |
+| naive fibonacci (two `f(n - 1)` / `f(n - 2)` calls) | `O(2^n)` |
+
+Limitations: nested loops always collapse to a single variable (`O(n·m)` is never
+emitted); `while` loops with no detectable bound are assumed `O(n)`;
+interprocedural analysis is one call level deep; worst-case only (`break` / early
+return ignored).
 
 ---
 

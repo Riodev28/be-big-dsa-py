@@ -8,6 +8,9 @@ setup:
 run:
 	uv run uvicorn app.main:app --reload
 
+test:
+	uv run pytest
+
 format:
 	uv run ruff format . && uv run black .
 
