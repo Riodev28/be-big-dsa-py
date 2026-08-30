@@ -21,6 +21,7 @@ from functools import reduce
 
 from . import recursion_cost
 from .expression import Complexity
+from .helpers import collect_functions, looks_like_halving
 from .iterable_size import callable_name, describe_iter
 from .symbols import SymbolRegistry, VariableRef
 
@@ -104,7 +105,7 @@ class _CostEvaluator:
     # -- entry point ----------------------------------------------------
 
     def analyze(self, tree: ast.Module) -> TimeComplexityResult:
-        functions = _collect_functions(tree)
+        functions = collect_functions(tree)
         top_level = [
             node
             for node in tree.body
@@ -255,7 +256,7 @@ class _CostEvaluator:
             sorts = info.sorts
         else:  # while loop
             key = ast.unparse(node.test)
-            logarithmic = _looks_like_halving(node)
+            logarithmic = looks_like_halving(node)
 
         if key is None:
             symbol: str | None = None
@@ -455,27 +456,6 @@ class _CostEvaluator:
         if self.loop_stack:
             return self.loop_stack[0]
         return self.registry.symbol_for(key)
-
-
-def _collect_functions(
-    tree: ast.Module,
-) -> list[ast.FunctionDef | ast.AsyncFunctionDef]:
-    functions: list[ast.FunctionDef | ast.AsyncFunctionDef] = []
-    for node in tree.body:
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            functions.append(node)
-        elif isinstance(node, ast.ClassDef):
-            functions.extend(
-                item
-                for item in node.body
-                if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef))
-            )
-    return functions
-
-
-def _looks_like_halving(node: ast.stmt) -> bool:
-    source = ast.unparse(node)
-    return "// 2" in source or ">> 1" in source
 
 
 def _find_hash_containers(tree: ast.Module) -> set[str]:

@@ -27,7 +27,7 @@ class SpatialComplexityService(CacheMixin):
         )
 
         if cached_analysis:
-            report = SpatialAnalysisReport(**cached_analysis)
+            report = SpatialAnalysisReport.from_cache(cached_analysis)
 
         else:
             report = SpatialComplexityAnalyzer(normalized_code).analyze()
@@ -60,6 +60,9 @@ class SpatialComplexityService(CacheMixin):
             recursive_functions=report.recursive_functions,
             generator_expressions=report.generator_expressions,
             dynamic_growth_operations=report.dynamic_growth_operations,
+            terms=report.terms,
+            variables=report.variables,
+            recursion_kind=report.recursion_kind,
         )
 
         ai_report = SpatialAiReport(spatial_explanation=explanation)
