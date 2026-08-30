@@ -69,7 +69,18 @@ class AIService:
         generator_expressions: int,
         dynamic_growth_operations: int,
         recursive_functions: int,
+        terms: Sequence[str] = (),
+        variables: Sequence[object] = (),
+        recursion_kind: str | None = None,
     ) -> str:
+        term_line = " + ".join(terms) if terms else space_complexity
+        variable_line = (
+            ", ".join(
+                f"{getattr(v, 'symbol', '?')} = {getattr(v, 'source', '?')}"
+                for v in variables
+            )
+            or "none (constant space)"
+        )
 
         prompt = f"""
             You are an expert computer science educator specializing in algorithm and memory analysis.
@@ -77,6 +88,9 @@ class AIService:
             ## Space Complexity Analysis Result
 
             - Space Complexity: {space_complexity}
+            - Additive terms: {term_line}
+            - Input-size variables: {variable_line}
+            - Recursion stack shape: {recursion_kind or "n/a"}
             - Total Allocations: {total_allocations}
             - List Allocations: {list_allocations}
             - Dictionary Allocations: {dict_allocations}
@@ -91,7 +105,8 @@ class AIService:
             Explain in 2–3 short paragraphs:
 
             1. What {space_complexity} space complexity means in practical terms
-            2. Why the algorithm was classified with this complexity based on the memory-related patterns detected above
+            2. Why the algorithm was classified with this complexity based on the memory-related patterns detected above.
+               If there are multiple variables (e.g. O(n + m)), explain they are independent structures.
             3. What impact this has on memory consumption as the input size grows
 
             ## Important Analysis Rules

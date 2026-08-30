@@ -18,6 +18,16 @@ from .expression import Complexity
 
 _RECURSION_VARIABLE = "n"
 
+# Ordering used to pick the "worst" recursion shape across several functions.
+SPACE_KIND_RANK = {
+    None: 0,
+    "none": 0,
+    "logarithmic": 1,
+    "linear": 2,
+    "divide_and_conquer": 2,
+    "polynomial": 3,
+}
+
 
 def is_recursive(func: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
     return bool(_self_calls(func))
@@ -55,6 +65,41 @@ def classify(
         )
 
     return ("exponential", Complexity.exponential())
+
+
+def classify_space(
+    func: ast.FunctionDef | ast.AsyncFunctionDef, per_frame: Complexity
+) -> tuple[str, Complexity]:
+    """Return ``(kind, complexity)`` for the *call-stack* space of a recursive
+    function. Space depends on the recursion **depth**, not the number of calls,
+    so tree recursion (fibonacci) is ``O(n)`` here, not ``O(2^n)``.
+
+    *per_frame* is any non-constant allocation each frame holds onto (a slice,
+    a copy, a concat) — it accumulates down the live call path.
+    """
+    calls = _self_calls(func)
+    if not calls:
+        return ("none", per_frame)
+
+    shrink = _detect_shrink(func, calls)
+    frame_degree = per_frame.max_degree()
+
+    if shrink == "halve":
+        depth = Complexity.logarithmic()
+        # slices down one path form a geometric series -> O(n)
+        held = (
+            Complexity.linear(_RECURSION_VARIABLE)
+            if frame_degree
+            else Complexity.constant()
+        )
+        kind = "divide_and_conquer" if frame_degree else "logarithmic"
+        return (kind, depth.add(held))
+
+    depth = Complexity.linear(_RECURSION_VARIABLE)
+    if frame_degree == 0:
+        return ("linear", depth)
+    # O(n) held per frame over O(n) frames on the path
+    return ("polynomial", Complexity.power(_RECURSION_VARIABLE, frame_degree + 1))
 
 
 # -- self-call discovery ----------------------------------------------------

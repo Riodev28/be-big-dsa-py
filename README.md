@@ -35,17 +35,20 @@ app/
 │   │   ├── analyzer.py         # AST-based Big O inference
 │   │   ├── request.py          # Request schema (Pydantic)
 │   │   └── dto.py              # Response DTO
-│   ├── spatial_complexity/     # Space complexity (WIP)
+│   ├── spatial_complexity/     # Space (memory) complexity feature
+│   │   ├── router.py           # POST /api/analyze/spatial
+│   │   ├── service.py          # Orchestration: cache → analyze → AI
+│   │   └── analyzer.py         # AST-based space Big O inference
 │   └── reports/                # Shared report value objects
 │       ├── temporal_analysis_report.py
-│       └── temporal_ai_report.py
+│       └── spatial_analysis_report.py
 └── shared/
     ├── ast/
     │   ├── parser.py           # Python AST parser wrapper
     │   ├── fingerprint.py      # Code fingerprint for cache keys
     │   ├── value_objects/      # NormalizedCode value object
-    │   ├── visitors/           # Allocation / recursion AST visitors (spatial)
-    │   └── complexity/         # Symbolic Big O cost engine (temporal)
+    │   ├── visitors/           # Allocation / recursion AST visitors (raw counts)
+    │   └── complexity/         # Symbolic Big O cost engine (time + space)
     ├── cache/
     │   ├── service.py          # Redis get/set abstraction
     │   ├── client.py           # Redis client factory
@@ -89,10 +92,11 @@ TemporalComplexityService
 
 ## Endpoints
 
-| Method | Path                    | Description                            |
+| Method | Path                    | Description                             |
 | ------ | ----------------------- | -------------------------------------- |
-| `GET`  | `/health`               | Health check                           |
-| `POST` | `/api/analyze/temporal` | Analyze time complexity of Python code |
+| `GET`  | `/api/health`           | Health check                           |
+| `POST` | `/api/analyze/temporal` | Analyze time complexity of Python code  |
+| `POST` | `/api/analyze/spatial`  | Analyze space complexity of Python code |
 
 ### `POST /api/analyze/temporal`
 
@@ -149,6 +153,45 @@ Limitations: nested loops always collapse to a single variable (`O(n·m)` is nev
 emitted); `while` loops with no detectable bound are assumed `O(n)`;
 interprocedural analysis is one call level deep; worst-case only (`break` / early
 return ignored).
+
+### `POST /api/analyze/spatial`
+
+Same request shape. Measures the **extra** memory an algorithm allocates.
+
+```json
+{
+  "analysis": {
+    "space_complexity": "O(n²)",
+    "terms": ["n²"],
+    "variables": [{ "symbol": "n", "source": "n" }],
+    "recursion_kind": null,
+    "total_allocations": 2,
+    "list_allocations": 2,
+    "dict_allocations": 0,
+    "set_allocations": 0,
+    "comprehensions": 0,
+    "generator_expressions": 0,
+    "dynamic_growth_operations": 1,
+    "recursive_functions": 0
+  },
+  "ai": null
+}
+```
+
+| Code shape | Result |
+| ---------- | ------ |
+| scalars / in-place swaps / `sorted()` used but discarded | `O(1)` |
+| a generator expression (`(x for x in xs)`) | `O(1)` (lazy) |
+| `[f(x) for x in data]` / `[0] * n` / `arr[a:b]` / `sorted(arr)` | `O(n)` |
+| a list/dict/set filled with `append` / `d[k]=v` / `add` in one loop | `O(n)` |
+| a structure filled in **two nested** loops, or `[[0] * n for _ in range(m)]` | `O(n²)` |
+| two independent structures over different inputs | `O(n + m)` |
+| linear or tree recursion (stack **depth**, not call count) | `O(n)` |
+| divide-and-conquer recursion (`f(n // 2)`) | `O(log n)` |
+
+Limitations: recursion contributes stack **depth** (fibonacci is `O(n)` space, not
+`O(2^n)`); a container's size is attributed to the loops enclosing its *mutation*
+sites; mutating a caller's argument is not counted as auxiliary space.
 
 ---
 
