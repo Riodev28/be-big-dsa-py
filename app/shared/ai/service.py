@@ -1,3 +1,5 @@
+from collections.abc import Sequence
+
 from .ai import AI
 
 
@@ -6,21 +8,41 @@ class AIService:
         self.client: AI = client
 
     async def explain_temporal_complexity(
-        self, time_complexity: str, max_loop_depth: int, recursive: bool
+        self,
+        time_complexity: str,
+        max_loop_depth: int,
+        recursive: bool,
+        terms: Sequence[str] = (),
+        variables: Sequence[object] = (),
+        recursion_kind: str | None = None,
     ) -> str:
+        term_line = " + ".join(terms) if terms else time_complexity
+        variable_line = (
+            ", ".join(
+                f"{getattr(v, 'symbol', '?')} = {getattr(v, 'source', '?')}"
+                for v in variables
+            )
+            or "none (constant time)"
+        )
+
         prompt = f"""
-            You are an expert computer science educator. Analyze the following time complexity result 
+            You are an expert computer science educator. Analyze the following time complexity result
             and explain it clearly to a developer.
 
             ## Complexity Analysis Result
             - **Time Complexity**: {time_complexity}
+            - **Additive terms**: {term_line}
+            - **Input-size variables**: {variable_line}
             - **Max Loop Depth**: {max_loop_depth}
             - **Is Recursive**: {recursive}
+            - **Recursion shape**: {recursion_kind or "n/a"}
 
             ## Your Task
             Explain in 2-3 short paragraphs:
             1. What {time_complexity} means in plain terms
-            2. Why the code was classified with this notation based on the analysis details above
+            2. Why the code was classified with this notation based on the analysis details above.
+               If there are multiple variables (e.g. O(n + m)), explain that they are independent
+               input sizes coming from separate loops, not nested work.
             3. What practical impact this has on performance (e.g. how it behaves with large inputs)
 
             ## Rules

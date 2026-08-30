@@ -32,7 +32,7 @@ class TemporalComplexityService(CacheMixin):
         )
 
         if cached_analysis:
-            report = TemporalAnalysisReport(**cached_analysis)
+            report = TemporalAnalysisReport.from_cache(cached_analysis)
 
         else:
             report = TemporalComplexityAnalyzer(normalized_code).analyze()
@@ -61,6 +61,9 @@ class TemporalComplexityService(CacheMixin):
             time_complexity=report.time_complexity,
             max_loop_depth=report.max_loop_depth,
             recursive=report.recursive,
+            terms=report.terms,
+            variables=report.variables,
+            recursion_kind=report.recursion_kind,
         )
 
         ai_report = TemporalAIReport(temporal_explanation=explanation)

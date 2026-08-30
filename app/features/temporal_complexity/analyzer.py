@@ -1,6 +1,6 @@
 from ...shared.ast import Parser
 from ...shared.ast.value_objects import NormalizedCode
-from ...shared.ast.visitors import LoopVisitors, RecursionVisitors
+from ...shared.ast.complexity import analyze_time_complexity
 from ..reports import TemporalAnalysisReport
 
 
@@ -9,41 +9,23 @@ class TemporalComplexityAnalyzer:
         self.code = code
 
     def analyze(self) -> TemporalAnalysisReport:
-        """Analyze big o notation complexity using the tree node and visitors"""
+        """Analyze big o notation complexity from the AST using the cost engine.
+
+        The engine composes loop, branch, recursion and library-call costs into
+        a symbolic expression: sequential loops add (``O(n + m)``), nested loops
+        multiply and collapse to one variable (``O(n²)``), recursion is
+        classified via recursion-tree reasoning (``O(log n)`` .. ``O(2^n)``).
+        """
 
         tree = Parser.to_tree_node(self.code)
-
-        loop_visitor = LoopVisitors()
-        recursion_visitor = RecursionVisitors()
-
-        loop_visitor.visit(tree)
-        recursion_visitor.visit(tree)
-
-        return self._build_result(
-            loop_depth=loop_visitor.max_depth,
-            recursive_functions=recursion_visitor.recursive_functions,
-        )
-
-    def _build_result(
-        self, loop_depth: int, recursive_functions: set[str]
-    ) -> TemporalAnalysisReport:
-
-        complexity = self._infer_complexity(loop_depth)
+        result = analyze_time_complexity(tree)
 
         return TemporalAnalysisReport(
-            time_complexity=complexity,
-            max_loop_depth=loop_depth,
-            recursive=bool(recursive_functions),
+            time_complexity=result.complexity.render(),
+            max_loop_depth=result.max_loop_depth,
+            recursive=result.recursive,
+            terms=result.complexity.term_strings(),
+            variables=result.variables,
+            loop_count=result.loop_count,
+            recursion_kind=result.recursion_kind,
         )
-
-    @staticmethod
-    def _infer_complexity(loop_depth: int) -> str:
-        """Complexity map for count depth loops"""
-        loop_mapping = {
-            0: "O(1)",
-            1: "O(n)",
-            2: "O(n²)",
-            3: "O(n³)",
-        }
-
-        return loop_mapping.get(loop_depth, "O(n^k)")
