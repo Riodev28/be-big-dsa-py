@@ -52,9 +52,44 @@ CASES = {
     "sorted-call": ("result = sorted(arr)\n", "O(n log n)"),
     "sort-method": ("arr.sort()\n", "O(n log n)"),
     "sorted-in-loop-header": ("for x in sorted(arr):\n    print(x)\n", "O(n log n)"),
-    "membership-in-loop": (
-        "for i in range(n):\n    if i in seen:\n        return i\n",
+    "membership-in-unknown-name-is-linear": (
+        "for i in range(n):\n    if i in items:\n        return i\n",
         "O(n²)",
+    ),
+    "membership-in-dict-is-constant": (
+        """
+        seen = {}
+        for i, x in enumerate(nums):
+            if x in seen:
+                return i
+            seen[x] = i
+        """,
+        "O(n)",
+    ),
+    "membership-in-set-is-constant": (
+        """
+        seen = set()
+        for i in range(n):
+            if i in seen:
+                return i
+            seen.add(i)
+        """,
+        "O(n)",
+    ),
+    "two-sequential-loops-with-dict-lookups": (
+        """
+        def two_sum(a, b, target):
+            table = {}
+            for i, v in enumerate(a):
+                if target - v in table:
+                    return i
+                table[v] = i
+            for i, v in enumerate(b):
+                if target - v in table:
+                    return i
+                table[v] = i
+        """,
+        "O(n + m)",
     ),
     "nested-comprehension": ("flat = [y for row in grid for y in row]\n", "O(n²)"),
     "iterative-binary-search": (

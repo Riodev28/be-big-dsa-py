@@ -54,6 +54,15 @@ _LOGARITHMIC_CALLS = {
 }
 _SIZE_PASS_THROUGH = {"range", "sorted", "reversed", "list", "tuple", "set"}
 _VIEW_METHODS = {"items", "keys", "values"}
+# Constructors that build a hash-based container (O(1) membership).
+_HASH_CONSTRUCTORS = {
+    "dict",
+    "set",
+    "frozenset",
+    "defaultdict",
+    "Counter",
+    "OrderedDict",
+}
 
 _RECURSION_KIND_RANK = {
     None: 0,
@@ -90,6 +99,7 @@ class _CostEvaluator:
         self.call_costs: dict[str, Complexity] = {}
         self.recursive_names: set[str] = set()
         self.recursion_kind: str | None = None
+        self.hash_containers: set[str] = set()
 
     # -- entry point ----------------------------------------------------
 
@@ -106,6 +116,7 @@ class _CostEvaluator:
         self.recursive_names = {
             fn.name for fn in functions if recursion_cost.is_recursive(fn)
         }
+        self.hash_containers = _find_hash_containers(tree)
 
         # Pass 1 warms up call_costs so pass 2 can substitute one level of calls.
         for fn in functions:
@@ -353,18 +364,23 @@ class _CostEvaluator:
         return cost
 
     def _membership_cost(self, container: ast.expr) -> Complexity:
+        # Hash-based containers (set/dict, literal or named) -> O(1) membership.
         if isinstance(container, (ast.Set, ast.Dict, ast.List, ast.Tuple)):
             return Complexity.constant()
-        if isinstance(container, ast.Call) and callable_name(container) in {
-            "set",
-            "dict",
-            "frozenset",
-        }:
+        if (
+            isinstance(container, ast.Call)
+            and callable_name(container) in _HASH_CONSTRUCTORS
+        ):
             return Complexity.constant()
-        if isinstance(container, ast.Name):
-            return Complexity.linear(self._size_symbol(container.id))
-        if isinstance(container, ast.Attribute):
-            return Complexity.linear(self._size_symbol(ast.unparse(container)))
+        if isinstance(container, (ast.Name, ast.Attribute)):
+            key = (
+                container.id
+                if isinstance(container, ast.Name)
+                else ast.unparse(container)
+            )
+            if key in self.hash_containers:
+                return Complexity.constant()
+            return Complexity.linear(self._size_symbol(key))
         return Complexity.constant()
 
     def _cost_of_call(self, node: ast.Call) -> Complexity:
@@ -460,3 +476,43 @@ def _collect_functions(
 def _looks_like_halving(node: ast.stmt) -> bool:
     source = ast.unparse(node)
     return "// 2" in source or ">> 1" in source
+
+
+def _find_hash_containers(tree: ast.Module) -> set[str]:
+    """Names bound anywhere to a dict/set-like value; membership in them is O(1)."""
+    finder = _HashContainerFinder()
+    finder.visit(tree)
+    return finder.names
+
+
+class _HashContainerFinder(ast.NodeVisitor):
+    def __init__(self) -> None:
+        self.names: set[str] = set()
+
+    def visit_Assign(self, node: ast.Assign) -> None:
+        if _is_hash_container(node.value):
+            for target in node.targets:
+                self._record(target)
+        self.generic_visit(node)
+
+    def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
+        if node.value is not None and _is_hash_container(node.value):
+            self._record(node.target)
+        self.generic_visit(node)
+
+    def _record(self, target: ast.expr) -> None:
+        if isinstance(target, ast.Name):
+            self.names.add(target.id)
+        elif isinstance(target, ast.Attribute):
+            self.names.add(ast.unparse(target))
+        elif isinstance(target, (ast.Tuple, ast.List)):
+            for element in target.elts:
+                self._record(element)
+
+
+def _is_hash_container(node: ast.expr) -> bool:
+    if isinstance(node, (ast.Dict, ast.DictComp, ast.Set, ast.SetComp)):
+        return True
+    if isinstance(node, ast.Call):
+        return callable_name(node) in _HASH_CONSTRUCTORS
+    return False
