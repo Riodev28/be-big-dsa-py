@@ -5,10 +5,17 @@ from ..security import *
 from ..exceptions import AuthExceptions
 from ..models import UserModel
 from ..dataclasses import TokenData
+from bson import ObjectId
 
 class UserRepository:
 
     oauth_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
+    def get_by_id(self, id: str) -> UserModel | None:
+        if not ObjectId.is_valid(id):
+            return None
+        return UserModel.objects(id=id).first()
 
     
     def get_by_email(self,email: str) -> str|None:
@@ -24,7 +31,7 @@ class UserRepository:
         
         access_token = create_access_token(
             data = TokenData(
-                user_id= str(new_user.id),
+                user_id= new_user.id,
                 username= new_user.username,
                 email= new_user.email,
             ),
@@ -50,7 +57,7 @@ class UserRepository:
         
         access_token = create_access_token(
             data = TokenData(
-                user_id=str(user["id"]),
+                user_id=user["id"],
                 username=user["username"],
                 email=user["email"]
             ),
