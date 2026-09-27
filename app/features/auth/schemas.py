@@ -48,3 +48,7 @@ class FileDTOResponse(BaseModel):
 class FileDTOCreateRequest(BaseModel):
     title: str
     content: str
+    
+class FileDTOUpdateRequest(BaseModel):
+    title: str
+    content: str

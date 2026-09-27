@@ -25,3 +25,9 @@ class CreateFileRequest:
     title: str
     content: NormalizedCode
     user: UserModel
+    
+@dataclass
+class UpdateFileRequest:
+    title: str
+    content: NormalizedCode
+    user: UserModel
