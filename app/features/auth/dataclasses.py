@@ -3,7 +3,7 @@ from datetime import datetime
 
 @dataclass(frozen=True)
 class Claims:
-    user_id: int
+    user_id: str
     username: str
     email: str
     expires_at: datetime

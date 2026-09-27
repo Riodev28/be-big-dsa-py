@@ -51,7 +51,7 @@ def get_claims(credentials: HTTPAuthorizationCredentials = Depends(bearer)) -> C
     except jwt.InvalidTokenError:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid token")
 
-    user_id: int = payload.get("user_id")
+    user_id: str = payload.get("user_id")
     username: str = payload.get("username")
     email: str = payload.get("email")
     

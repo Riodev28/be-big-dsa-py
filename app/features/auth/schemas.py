@@ -31,4 +31,4 @@ class UserResponse(BaseModel):
     
 class FilesDTOResponse(BaseModel):
     code: str
-    owner: UserResponse
+    user_id: str
