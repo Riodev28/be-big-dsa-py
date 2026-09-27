@@ -68,3 +68,8 @@ async def create_file(dto: FileDTOCreateRequest, claims: Claims = Depends(get_cl
 @router.put("/file/{id}", status_code=status.HTTP_202_ACCEPTED)
 async def update_file(id: str, dto: FileDTOUpdateRequest, claims: Claims = Depends(get_claims)) -> FileDTOResponse:
     return await file_controller.update(id=id, dto=dto, user_id=claims.user_id)
+
+
+@router.delete("/file/{id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_file(id: str, claims: Claims = Depends(get_claims)) -> None:
+    await file_controller.delete(id=id, user_id=claims.user_id)
