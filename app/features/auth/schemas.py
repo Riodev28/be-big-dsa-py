@@ -25,6 +25,7 @@ class RegisterDTOReponse(BaseModel):
     
     
 class UserResponse(BaseModel):
+    id: str | None = None
     username: str
     email: EmailStr
     
