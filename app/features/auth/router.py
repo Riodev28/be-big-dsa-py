@@ -10,7 +10,8 @@ from .schemas import (
     UserResponse,
     RegisterDTOReponse,
     LoginDTOResponse,
-    FilesDTOResponse,
+    FileDTOResponse,
+    FileDTOCreateRequest
 )
 
 from .repositories import (
@@ -48,6 +49,11 @@ async def register(dto: RegisterDTORequest) -> RegisterDTOReponse:
 
 
 @router.get("/files", status_code=status.HTTP_200_OK)
-async def files(claims: Claims = Depends(get_claims)) -> list[FilesDTOResponse]:
+async def files(claims: Claims = Depends(get_claims)) -> list[FileDTOResponse]:
     user_id = claims.user_id
     return await file_controller.index(user_id=user_id)
+
+
+@router.post("/file", status_code=201)
+async def create_files(dto: FileDTOCreateRequest, claims: Claims = Depends(get_claims)) -> FileDTOResponse:
+    return await file_controller.create(dto=dto, user_id=claims.user_id)
