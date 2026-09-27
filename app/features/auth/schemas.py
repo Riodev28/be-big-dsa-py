@@ -1,8 +1,8 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, SecretStr
 
 class LoginDTORequest(BaseModel):
-    email: str
-    password: str
+    email: EmailStr
+    password: SecretStr
     
     
 class LoginDTOResponse(BaseModel):
@@ -12,18 +12,23 @@ class LoginDTOResponse(BaseModel):
 
 class RegisterDTORequest(BaseModel):
     username: str
-    email: str
-    password: str
-    password_check: str
+    email: EmailStr
+    password: SecretStr
+    password_check: SecretStr
     
     
 class RegisterDTOReponse(BaseModel):
     username: str
-    email: str
+    email: EmailStr
     access_token: str
     token_type: str
     
     
 class UserResponse(BaseModel):
+    id: str | None = None
     username: str
-    email: str
+    email: EmailStr
+    
+class FilesDTOResponse(BaseModel):
+    code: str
+    user_id: str

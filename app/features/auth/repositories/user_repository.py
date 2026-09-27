@@ -1,16 +1,21 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-import jwt
-from .dto import LoginDTORequest, RegisterDTORequest, UserResponse, LoginDTOResponse, RegisterDTOReponse
-from .security import *
-from .exceptions import AuthExceptions
-from .model import UserModel
+from ..schemas import LoginDTORequest, RegisterDTORequest, UserResponse, LoginDTOResponse, RegisterDTOReponse
+from ..security import *
+from ..exceptions import AuthExceptions
+from ..models import UserModel
+from ..dataclasses import TokenData
+from bson import ObjectId
 
 class UserRepository:
-    
-    SECRET_KEY = "your-secret-key"
 
     oauth_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
+    def get_by_id(self, id: str) -> UserModel | None:
+        if not ObjectId.is_valid(id):
+            return None
+        return UserModel.objects(id=id).first()
 
     
     def get_by_email(self,email: str) -> str|None:
@@ -25,7 +30,11 @@ class UserRepository:
         new_user = await self.create(credentials=credentials)
         
         access_token = create_access_token(
-            data={"sub": new_user.username},
+            data = TokenData(
+                user_id= new_user.id,
+                username= new_user.username,
+                email= new_user.email,
+            ),
             expires_delta=time_token_expires()
         )
         
@@ -39,7 +48,7 @@ class UserRepository:
     async def login(self, credentials: LoginDTORequest) -> LoginDTOResponse:        
         user = self.get_by_email(email = credentials.email)
 
-        if not user or not verify_password(plain = credentials.password, hashed = user["password"]):
+        if not user or not verify_password(plain = credentials.password.get_secret_value(), hashed = user["password"]):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect username or password",
@@ -47,7 +56,11 @@ class UserRepository:
             )
         
         access_token = create_access_token(
-            data={"sub": user["email"]},
+            data = TokenData(
+                user_id=user["id"],
+                username=user["username"],
+                email=user["email"]
+            ),
             expires_delta=time_token_expires()
         )
         
@@ -56,19 +69,12 @@ class UserRepository:
             token_type="bearer"
         )        
         
-    async def me(self, token: str) -> UserResponse:
-        try:
-            payload = decode_token(token)
-            print(payload)
-            email: str = payload.get("sub")
+    async def me(self, email: str) -> UserResponse:
             
-            if email is None:
-                raise AuthExceptions.credentials_exceptions()
-        
-        except jwt.InvalidTokenError:
+        if email is None:
             raise AuthExceptions.credentials_exceptions()
         
-        user = UserModel.objects.get(email=email)
+        user: UserModel = UserModel.objects.get(email=email)
         
         if user is None:
             raise AuthExceptions.credentials_exceptions()
@@ -83,10 +89,11 @@ class UserRepository:
         user = UserModel(
             username=credentials.username,
             email=credentials.email,
-            password=hash_password(password=credentials.password)
+            password=hash_password(password=credentials.password.get_secret_value())
         ).save()
-        
+                
         return UserResponse(
-            username=user["username"],
-            email=user["email"]
+            id=str(user.id),
+            username=user.username,
+            email=user.email
         )

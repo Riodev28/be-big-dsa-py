@@ -2,13 +2,13 @@ from mongoengine import (
     Document,
     StringField,
     BooleanField,
-    DateTimeField
+    DateTimeField,
+    ReferenceField
 )
 
 from datetime import datetime, timezone
 
 class UserModel(Document):
-    
     username= StringField(max_length=255)
     email= StringField(max_length=255)
     password= StringField(max_length=255)
@@ -20,3 +20,13 @@ class UserModel(Document):
         "collection": "users",
         "indexes": ["email"]
     }
+    
+    
+class FileModel(Document):
+    title= StringField(max_length=100)
+    content= StringField()
+    
+    created_at= DateTimeField(default=lambda: datetime.now(timezone.utc))
+    updated_at= DateTimeField(default=lambda: datetime.now(timezone.utc))
+    
+    owner= ReferenceField(UserModel)
