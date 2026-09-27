@@ -1,5 +1,5 @@
 from ..models import FileModel, UserModel
-from ..dataclasses import CreateFileRequest
+from ..dataclasses import CreateFileRequest, UpdateFileRequest
 from bson import ObjectId
 from ..exceptions import FileExceptions
 
@@ -23,4 +23,10 @@ class FileRepository:
 
     async def save(self, request: CreateFileRequest) -> FileModel:
         return FileModel(title = request.title, content = request.content, owner = request.user).save()
+    
+    
+    async def update(self, file: FileModel, request: UpdateFileRequest) -> FileModel:
+        file.title = request.title
+        file.content = request.content
         
+        return file.save()

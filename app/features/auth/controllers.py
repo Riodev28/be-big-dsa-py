@@ -7,11 +7,13 @@ from .schemas import (
     UserResponse,
     RegisterDTOReponse,
     FileDTOResponse,
-    FileDTOCreateRequest
+    FileDTOCreateRequest,
+    FileDTOUpdateRequest
 )
 from .dataclasses import (
     Claims,
-    CreateFileRequest
+    CreateFileRequest,
+    UpdateFileRequest
 )
 
 class UserController:
@@ -39,7 +41,7 @@ class FileController:
     async def index(self, user_id: str) -> list[FileDTOResponse]:
         user = self.user_repo.get_by_id(id=user_id)
         files = await self.repository.index(user=user)
-        owner = UserResponse(id=user.id, username=user.username, email=user.email)
+        owner = UserResponse(id=user.id, username=user.username, email=user.email) # TODO: refactor
 
         return [
             FileDTOResponse(
@@ -58,7 +60,7 @@ class FileController:
         user = self.user_repo.get_by_id(id=user_id)
         file = await self.repository.get_by_id(id=id, user=user)
         
-        owner = UserResponse(id=user.id, username=user.username, email=user.email)
+        owner = UserResponse(id=user.id, username=user.username, email=user.email) # TODO: refactor
         
         return FileDTOResponse(
             id=file.id,
@@ -78,7 +80,7 @@ class FileController:
                 content=dto.content,
                 user=user
             ))
-        owner = UserResponse(id=user.id, username=user.username, email=user.email)
+        owner = UserResponse(id=user.id, username=user.username, email=user.email) # TODO: refactor
         
         return FileDTOResponse(
             title=new_file.title,
@@ -88,3 +90,26 @@ class FileController:
             updated_at=new_file.updated_at
         )
         
+    
+    async def update(self, id: str, dto: FileDTOUpdateRequest, user_id: str) -> FileDTOResponse:
+        user = self.user_repo.get_by_id(id=user_id)
+        owner = UserResponse(id=user.id, username=user.username, email=user.email) # TODO: refactor
+        file = await self.repository.get_by_id(id=id, user=user)
+        
+        updated_file = await self.repository.update(
+            file=file,
+            request=UpdateFileRequest(
+                title=dto.title,
+                content=dto.content,
+                user=user
+            )
+        )
+        
+        return FileDTOResponse(
+            id=updated_file.id,
+            title=updated_file.title,
+            content=updated_file.content,
+            user=owner,
+            created_at=updated_file.created_at,
+            updated_at=updated_file.updated_at
+        )
