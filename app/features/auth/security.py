@@ -11,8 +11,6 @@ from dataclasses import asdict
 
 bearer = HTTPBearer()
 
-_now: datetime = datetime.now(timezone.utc) 
-
 def verify_password(plain: str, hashed: str) -> bool:
     return bcrypt.checkpw(plain.encode(), hashed.encode())
 
@@ -24,7 +22,8 @@ def hash_password(password: str) -> str:
 def create_access_token(data: TokenData, expires_delta: timedelta | None = None) -> str:
     """ Create the access token for user """
     to_encode = asdict(data)
-    expire = _now + (expires_delta or timedelta(minutes=15))
+    now = datetime.now(timezone.utc)
+    expire = now + (expires_delta or timedelta(minutes=15))
     to_encode.update({"exp": expire})
     
     return jwt.encode(
