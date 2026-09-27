@@ -23,3 +23,11 @@ class AuthExceptions:
             detail="User not found",
             headers={"WWW-Authenticate": "Bearer"}
         )
+        
+class FileExceptions:
+    def not_found() -> None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File not found",
+            headers={"WWW-Authenticate": "Bearer"}
+        )

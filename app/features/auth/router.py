@@ -54,6 +54,11 @@ async def files(claims: Claims = Depends(get_claims)) -> list[FileDTOResponse]:
     return await file_controller.index(user_id=user_id)
 
 
-@router.post("/file", status_code=201)
+@router.get("/file/{id}", status_code=status.HTTP_200_OK)
+async def get_file(id: str, claims: Claims = Depends(get_claims)) -> FileDTOResponse:
+    return await file_controller.detail(id=id, user_id=claims.user_id)
+
+
+@router.post("/file", status_code=status.HTTP_201_CREATED)
 async def create_files(dto: FileDTOCreateRequest, claims: Claims = Depends(get_claims)) -> FileDTOResponse:
     return await file_controller.create(dto=dto, user_id=claims.user_id)

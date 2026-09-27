@@ -43,6 +43,7 @@ class FileController:
 
         return [
             FileDTOResponse(
+                id=file.id,
                 title=file.title,
                 content=file.content,
                 user=owner,
@@ -51,6 +52,22 @@ class FileController:
             )
             for file in files
         ]
+        
+    
+    async def detail(self, id: str, user_id: str) -> FileDTOResponse:
+        user = self.user_repo.get_by_id(id=user_id)
+        file = await self.repository.get_by_id(id=id, user=user)
+        
+        owner = UserResponse(id=user.id, username=user.username, email=user.email)
+        
+        return FileDTOResponse(
+            id=file.id,
+            title=file.title,
+            content=file.content,
+            user=owner,
+            created_at=file.created_at,
+            updated_at=file.updated_at
+        )
         
     
     async def create(self, dto: FileDTOCreateRequest, user_id: str) -> FileDTOResponse:

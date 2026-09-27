@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr, SecretStr, field_validator
 from datetime import datetime
+from app.shared.types import ObjectIdStr
 
 class LoginDTORequest(BaseModel):
     email: EmailStr
@@ -26,7 +27,7 @@ class RegisterDTOReponse(BaseModel):
     
     
 class UserResponse(BaseModel):
-    id: str | None = None
+    id: ObjectIdStr | None = None
     username: str
     email: EmailStr
     
@@ -36,6 +37,7 @@ class UserResponse(BaseModel):
         return str(v) if v is not None else v
     
 class FileDTOResponse(BaseModel):
+    id: ObjectIdStr | None = None
     title: str
     content: str
     user: UserResponse
