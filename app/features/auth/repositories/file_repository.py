@@ -30,3 +30,7 @@ class FileRepository:
         file.content = request.content
         
         return file.save()
+    
+    
+    async def delete(self, file: FileModel) -> None:
+        file.delete()

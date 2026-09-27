@@ -113,3 +113,11 @@ class FileController:
             created_at=updated_file.created_at,
             updated_at=updated_file.updated_at
         )
+        
+        
+    async def delete(self, id: str, user_id: str) -> None:
+        user = self.user_repo.get_by_id(id=user_id)
+        owner = UserResponse(id=user.id, username=user.username, email=user.email) # TODO: refactor
+        file = await self.repository.get_by_id(id=id, user=user)
+        
+        await self.repository.delete(file=file)
