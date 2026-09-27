@@ -9,7 +9,6 @@ from mongoengine import (
 from datetime import datetime, timezone
 
 class UserModel(Document):
-    id = StringField(primary_key=True)
     username= StringField(max_length=255)
     email= StringField(max_length=255)
     password= StringField(max_length=255)
