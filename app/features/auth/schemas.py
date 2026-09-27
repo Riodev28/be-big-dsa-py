@@ -1,4 +1,5 @@
-from pydantic import BaseModel, EmailStr, SecretStr
+from pydantic import BaseModel, EmailStr, SecretStr, field_validator
+from datetime import datetime
 
 class LoginDTORequest(BaseModel):
     email: EmailStr
@@ -29,6 +30,19 @@ class UserResponse(BaseModel):
     username: str
     email: EmailStr
     
-class FilesDTOResponse(BaseModel):
-    code: str
-    user_id: str
+    @field_validator("id", mode="before")
+    @classmethod
+    def objectid_to_str(cls, v):
+        return str(v) if v is not None else v
+    
+class FileDTOResponse(BaseModel):
+    title: str
+    content: str
+    user: UserResponse
+    created_at: datetime
+    updated_at: datetime | None = None
+    
+    
+class FileDTOCreateRequest(BaseModel):
+    title: str
+    content: str

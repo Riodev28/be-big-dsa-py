@@ -15,7 +15,13 @@ class UserRepository:
     def get_by_id(self, id: str) -> UserModel | None:
         if not ObjectId.is_valid(id):
             return None
-        return UserModel.objects(id=id).first()
+        
+        user = UserModel.objects(id=id).first()
+        
+        if user is None:
+            raise AuthExceptions.not_found()
+        
+        return user
 
     
     def get_by_email(self,email: str) -> str|None:
