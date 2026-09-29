@@ -1,8 +1,5 @@
 from fastapi import APIRouter, status, Depends
-from .controllers import (
-    UserController,
-    FileController
-)
+from .controllers import UserController, FileController
 
 from .schemas import (
     LoginDTORequest,
@@ -12,18 +9,14 @@ from .schemas import (
     LoginDTOResponse,
     FileDTOResponse,
     FileDTOCreateRequest,
-    FileDTOUpdateRequest
+    FileDTOUpdateRequest,
 )
 
-from .repositories import (
-    UserRepository,
-    FileRepository
-)
+from .repositories import UserRepository, FileRepository
 
 from fastapi.security import HTTPBearer
 from .security import get_claims
 from .dataclasses import Claims
-
 
 router = APIRouter()
 security = HTTPBearer()
@@ -34,17 +27,18 @@ controller = UserController(repository=user_repository)
 file_repository = FileRepository()
 file_controller = FileController(repository=file_repository, user_repo=user_repository)
 
-@router.get('/me', status_code=status.HTTP_200_OK)
+
+@router.get("/me", status_code=status.HTTP_200_OK)
 async def me(claims: Claims = Depends(get_claims)) -> UserResponse:
     return await controller.me(claims=claims)
 
 
-@router.post('/login', status_code=status.HTTP_200_OK)
+@router.post("/login", status_code=status.HTTP_200_OK)
 async def login(dto: LoginDTORequest) -> LoginDTOResponse:
     return await controller.login(dto=dto)
 
 
-@router.post('/register', status_code=status.HTTP_200_OK)
+@router.post("/register", status_code=status.HTTP_200_OK)
 async def register(dto: RegisterDTORequest) -> RegisterDTOReponse:
     return await controller.register(dto=dto)
 
@@ -61,12 +55,16 @@ async def get_file(id: str, claims: Claims = Depends(get_claims)) -> FileDTOResp
 
 
 @router.post("/file", status_code=status.HTTP_201_CREATED)
-async def create_file(dto: FileDTOCreateRequest, claims: Claims = Depends(get_claims)) -> FileDTOResponse:
+async def create_file(
+    dto: FileDTOCreateRequest, claims: Claims = Depends(get_claims)
+) -> FileDTOResponse:
     return await file_controller.create(dto=dto, user_id=claims.user_id)
 
 
 @router.put("/file/{id}", status_code=status.HTTP_202_ACCEPTED)
-async def update_file(id: str, dto: FileDTOUpdateRequest, claims: Claims = Depends(get_claims)) -> FileDTOResponse:
+async def update_file(
+    id: str, dto: FileDTOUpdateRequest, claims: Claims = Depends(get_claims)
+) -> FileDTOResponse:
     return await file_controller.update(id=id, dto=dto, user_id=claims.user_id)
 
 

@@ -15,5 +15,6 @@ class CodeNotNormalizedError(Exception):
 
     pass
 
+
 class FailedDatabaseConnection(Exception):
-    """ Throws when: failed to connect to database """
+    """Throws when: failed to connect to database"""

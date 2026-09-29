@@ -6,7 +6,6 @@ from ...shared.cache.client import make_client
 from ...shared.ai.service import AIService
 from ...shared.ai.client import create_ai_client
 
-
 router = APIRouter()
 
 cache = CacheService(make_client())
