@@ -8,6 +8,8 @@ from fastapi import Depends, status
 from .dataclasses import Claims, TokenData
 from fastapi.exceptions import HTTPException
 from dataclasses import asdict
+from typing import Literal
+import uuid
 
 bearer = HTTPBearer()
 
@@ -18,30 +20,48 @@ def verify_password(plain: str, hashed: str) -> bool:
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
+TokenType = Literal["access", "refresh"]
+
+def _create_token(data: TokenData, token_type: TokenType, expires_delta: timedelta) -> str:
+    now = datetime.now(timezone.utc)
+    payload = {
+        **asdict(data),
+        "type": token_type,
+        "iat": now,
+        "exp": now + expires_delta,
+        "jti": str(uuid.uuid4()),
+    }
+    return jwt.encode(
+        payload,
+        settings.jwt_secret_key.get_secret_value(),
+        algorithm=settings.algorithm,
+    )
 
 def create_access_token(data: TokenData, expires_delta: timedelta | None = None) -> str:
     """ Create the access token for user """
-    to_encode = asdict(data)
-    now = datetime.now(timezone.utc)
-    expire = now + (expires_delta or timedelta(minutes=15))
-    to_encode.update({"exp": expire})
-    
-    return jwt.encode(
-        payload = to_encode,
-        key = settings.jwt_secret_key.get_secret_value(),
-        algorithm = settings.algorithm)
+    return _create_token(data=data, token_type="access", expires_delta=expires_delta or timedelta(minutes=15))
+
+
+def refresh_access_token(data: TokenData, expires_delta: timedelta | None = None) -> str:
+    """ Refresh the token """
+    return _create_token(data=data, token_type="refresh", expires_delta=expires_delta or timedelta(minutes=15))
 
 
 def time_token_expires() -> timedelta:
     return timedelta(minutes = settings.token_expire)
 
 
-def decode_token(token: str) -> dict[str, Any]:
-    return jwt.decode(
+def decode_token(token: str, expected_type: TokenType) -> dict[str, Any]:
+    payload = jwt.decode(
         jwt=token,
         key = settings.jwt_secret_key.get_secret_value(),
         algorithms=[settings.algorithm]
     )
+    
+    if payload.get("type") != expected_type: raise jwt.InvalidTokenError("Wrong token type")
+    
+    return payload
+    
     
 def get_claims(credentials: HTTPAuthorizationCredentials = Depends(bearer)) -> Claims:
     try:

@@ -25,6 +25,13 @@ class RegisterDTOReponse(BaseModel):
     access_token: str
     token_type: str
     
+
+class RefreshTokenDTOResponse(BaseModel):
+    username: str
+    email: str
+    access_token: str
+    token_type: str
+    
     
 class UserResponse(BaseModel):
     id: ObjectIdStr | None = None

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, status, Depends
+from fastapi import APIRouter, status, Depends, Response, Cookie
 from .controllers import (
     UserController,
     FileController
@@ -9,6 +9,7 @@ from .schemas import (
     RegisterDTORequest,
     UserResponse,
     RegisterDTOReponse,
+    RefreshTokenDTOResponse,
     LoginDTOResponse,
     FileDTOResponse,
     FileDTOCreateRequest,
@@ -21,6 +22,7 @@ from .repositories import (
 )
 
 from fastapi.security import HTTPBearer
+from fastapi.exceptions import HTTPException
 from .security import get_claims
 from .dataclasses import Claims
 
@@ -33,6 +35,10 @@ controller = UserController(repository=user_repository)
 
 file_repository = FileRepository()
 file_controller = FileController(repository=file_repository, user_repo=user_repository)
+
+# ==========================================================================================
+# Auth endpoints
+# ==========================================================================================
 
 @router.get('/me', status_code=status.HTTP_200_OK)
 async def me(claims: Claims = Depends(get_claims)) -> UserResponse:
@@ -48,6 +54,28 @@ async def login(dto: LoginDTORequest) -> LoginDTOResponse:
 async def register(dto: RegisterDTORequest) -> RegisterDTOReponse:
     return await controller.register(dto=dto)
 
+@router.post("/refresh", status_code=status.HTTP_200_OK)
+async def refresh(response: Response,
+    refresh_token: str | None = Cookie(default=None),) -> RefreshTokenDTOResponse:
+    if not refresh_token:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Missing refresh token")
+
+    result = await controller.refresh(refresh_token=refresh_token)
+
+    response.set_cookie(
+        key="refresh_token",
+        value=result.refresh_token,
+        httponly=True,
+        secure=True,
+        samesite="strict",
+        path="/auth/refresh",
+        max_age=7 * 24 * 3600,
+    )
+    return RefreshTokenDTOResponse(access_token=result.access_token)
+
+# ==========================================================================================
+# Files endpoints
+# ==========================================================================================
 
 @router.get("/files", status_code=status.HTTP_200_OK)
 async def files(claims: Claims = Depends(get_claims)) -> list[FileDTOResponse]:

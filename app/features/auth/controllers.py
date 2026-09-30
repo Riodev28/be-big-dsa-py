@@ -6,6 +6,7 @@ from .schemas import (
     LoginDTOResponse,
     UserResponse,
     RegisterDTOReponse,
+    RefreshTokenDTOResponse,
     FileDTOResponse,
     FileDTOCreateRequest,
     FileDTOUpdateRequest
@@ -30,6 +31,8 @@ class UserController:
     
     async def register(self, dto: RegisterDTORequest) -> RegisterDTOReponse:
         return await self.respository.register(dto)
+    
+    async def refresh(self, dto) -> RefreshTokenDTOResponse: 
     
 
 class FileController:
