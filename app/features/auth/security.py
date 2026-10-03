@@ -16,6 +16,7 @@ from .exceptions import AuthExceptions
 TokenType = Literal["access", "refresh"]
 
 bearer = HTTPBearer()
+optional_bearer = HTTPBearer(auto_error=False)
 
 
 def verify_password(plain: str, hashed: str) -> bool:
@@ -81,9 +82,9 @@ def decode_token(token: str, expected_type: TokenType) -> dict[str, Any]:
     return payload
 
 
-def get_claims(credentials: HTTPAuthorizationCredentials = Depends(bearer)) -> Claims:
+def _claims_from_token(token: str) -> Claims:
     try:
-        payload = decode_token(credentials.credentials, expected_type="access")
+        payload = decode_token(token, expected_type="access")
     except jwt.ExpiredSignatureError:
         raise AuthExceptions.token_expired()
     except jwt.InvalidTokenError:
@@ -100,3 +101,20 @@ def get_claims(credentials: HTTPAuthorizationCredentials = Depends(bearer)) -> C
         email=email,
         expires_at=datetime.fromtimestamp(payload["exp"], tz=timezone.utc),
     )
+
+
+def get_claims(credentials: HTTPAuthorizationCredentials = Depends(bearer)) -> Claims:
+    return _claims_from_token(credentials.credentials)
+
+
+def get_optional_claims(
+    credentials: HTTPAuthorizationCredentials | None = Depends(optional_bearer),
+) -> Claims | None:
+    """
+    For public endpoints that behave better when the caller is known.
+    No header -> anonymous. A header with a bad token is still a 401, so an
+    expired session is reported instead of being silently ignored.
+    """
+    if credentials is None:
+        return None
+    return _claims_from_token(credentials.credentials)
