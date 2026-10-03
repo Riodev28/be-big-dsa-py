@@ -1,5 +1,6 @@
 from collections.abc import Sequence
 
+from ...core.config import settings
 from .ai import AI
 
 # Enough to recognize an algorithm without paying for huge files
@@ -56,7 +57,7 @@ class AIService:
         """
 
         response = await self.client.create_response(
-            model="llama-3.3-70b-versatile", prompt=prompt
+            model=settings.ai_model, prompt=prompt
         )
 
         return self.client.first_content(response)
@@ -131,7 +132,7 @@ class AIService:
         """
 
         response = await self.client.create_response(
-            model="llama-3.3-70b-versatile",
+            model=settings.ai_model,
             prompt=prompt,
         )
 
@@ -158,7 +159,7 @@ class AIService:
         """
 
         response = self.client.complete(
-            model="llama-3.3-70b-versatile", prompt=prompt, max_tokens=20
+            model=settings.ai_model, prompt=prompt, max_tokens=20
         )
 
         return self.client.first_content(response) or ""

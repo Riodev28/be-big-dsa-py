@@ -2,9 +2,9 @@ from fastapi import APIRouter, status
 
 from app.features.auth.dependencies import CurrentUser
 from app.shared.ai.client import create_ai_client
+from app.shared.ai.naming import AIAlgorithmNamer
 from app.shared.ai.service import AIService
 
-from .naming import AIAlgorithmNamer
 from .repository import FileRepository
 from .schemas import FileDTOCreateRequest, FileDTOResponse, FileDTOUpdateRequest
 from .service import FileService

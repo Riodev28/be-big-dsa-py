@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from app.features.files.naming import AIAlgorithmNamer, clean_algorithm_name
+from app.shared.ai.naming import AIAlgorithmNamer, clean_algorithm_name
 from app.features.files.schemas import FileDTOCreateRequest, FileDTOUpdateRequest
 from app.features.files.service import FileService
 

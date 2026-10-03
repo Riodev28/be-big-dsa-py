@@ -7,13 +7,16 @@ from ...shared.cache import CacheService
 from ...shared.cache.client import make_client
 from ...shared.ai.service import AIService
 from ...shared.ai.client import create_ai_client
+from ...shared.ai.naming import AIAlgorithmNamer
 
 router = APIRouter()
 
 cache = CacheService(make_client())
 ai = AIService(create_ai_client())
 
-service = TemporalComplexityService(cache, ai, recorder=MongoAnalysisRecorder())
+service = TemporalComplexityService(
+    cache, ai, recorder=MongoAnalysisRecorder(), namer=AIAlgorithmNamer(ai)
+)
 
 
 @router.post("/temporal", status_code=status.HTTP_200_OK)
