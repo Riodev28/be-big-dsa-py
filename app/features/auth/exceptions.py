@@ -1,33 +1,60 @@
 from fastapi import HTTPException, status
 
+BEARER_HEADER = {"WWW-Authenticate": "Bearer"}
+
+
 class AuthExceptions:
-    
-    def credentials_exceptions() -> None:
-        raise HTTPException(
+    """Factories for auth errors. Usage: `raise AuthExceptions.not_found()`."""
+
+    @staticmethod
+    def credentials_exceptions() -> HTTPException:
+        return HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
+            headers=BEARER_HEADER,
         )
-        
-        
-    def user_exists() -> None:
-        raise HTTPException(
+
+    @staticmethod
+    def invalid_credentials() -> HTTPException:
+        return HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials",
+            headers=BEARER_HEADER,
+        )
+
+    @staticmethod
+    def token_expired() -> HTTPException:
+        return HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token expired",
+            headers=BEARER_HEADER,
+        )
+
+    @staticmethod
+    def invalid_token() -> HTTPException:
+        return HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+            headers=BEARER_HEADER,
+        )
+
+    @staticmethod
+    def missing_refresh_token() -> HTTPException:
+        return HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing refresh token",
+        )
+
+    @staticmethod
+    def user_exists() -> HTTPException:
+        return HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="This user already exists",
-            headers={"WWW-Authenticate": "Bearer"},
         )
-        
-    def not_found() -> None:
-        raise HTTPException(
+
+    @staticmethod
+    def not_found() -> HTTPException:
+        return HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
-            headers={"WWW-Authenticate": "Bearer"}
-        )
-        
-class FileExceptions:
-    def not_found() -> None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="File not found",
-            headers={"WWW-Authenticate": "Bearer"}
         )

@@ -1,2 +1,2 @@
-from .file_repository import FileRepository as FileRepository
+from .refresh_token_repository import RefreshTokenRepository as RefreshTokenRepository
 from .user_repository import UserRepository as UserRepository
