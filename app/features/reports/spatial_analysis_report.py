@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Any
 
-from app.shared.ast.complexity import VariableRef
+from app.shared.ast.complexity import ComplexityClass, VariableRef
 
 
 def _as_variable_ref(item: Any) -> VariableRef:
@@ -30,6 +30,8 @@ class SpatialAnalysisReport:
 
     dynamic_growth_operations: int
 
+    complexity_class: ComplexityClass
+
     terms: tuple[str, ...] = ()
     variables: tuple[VariableRef, ...] = ()
     recursion_kind: str | None = None
@@ -52,4 +54,5 @@ class SpatialAnalysisReport:
                 _as_variable_ref(item) for item in data.get("variables", ())
             ),
             recursion_kind=data.get("recursion_kind"),
+            complexity_class=ComplexityClass(data["complexity_class"]),
         )

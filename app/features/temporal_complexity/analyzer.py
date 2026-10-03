@@ -1,6 +1,6 @@
 from ...shared.ast import Parser
 from ...shared.ast.value_objects import NormalizedCode
-from ...shared.ast.complexity import analyze_time_complexity
+from ...shared.ast.complexity import analyze_time_complexity, classify
 from ..reports import TemporalAnalysisReport
 
 
@@ -28,4 +28,5 @@ class TemporalComplexityAnalyzer:
             variables=result.variables,
             loop_count=result.loop_count,
             recursion_kind=result.recursion_kind,
+            complexity_class=classify(result.complexity),
         )

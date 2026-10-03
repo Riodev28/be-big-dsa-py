@@ -6,3 +6,6 @@ from .space_evaluator import SpaceComplexityResult as SpaceComplexityResult
 from .space_evaluator import analyze_space_complexity as analyze_space_complexity
 from .symbols import SymbolRegistry as SymbolRegistry
 from .symbols import VariableRef as VariableRef
+from .classification import ComplexityClass as ComplexityClass
+from .classification import Severity as Severity
+from .classification import classify as classify
