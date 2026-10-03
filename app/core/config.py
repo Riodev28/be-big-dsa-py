@@ -7,6 +7,8 @@ class Settings(BaseSettings):
 
     cache_url: str
     ai_api_key: SecretStr
+    # Groq retires models over time; override with AI_MODEL in .env
+    ai_model: str = "qwen/qwen3.8-27b"
 
     db_name: str
     db_user: str

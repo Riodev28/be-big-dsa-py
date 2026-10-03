@@ -8,6 +8,7 @@ from typing import Any, ClassVar, Generic, TypeVar
 
 import anyio
 
+from app.shared.ai.naming import AlgorithmNamer, NullAlgorithmNamer
 from app.shared.ai.service import AIService
 from app.shared.ast import Fingerprint, NormalizedCode
 from app.shared.ast.complexity import ComplexityClass
@@ -22,6 +23,9 @@ logger = logging.getLogger(__name__)
 # The analyzers parse with the server's own `ast`, so that is the grammar used
 ANALYZED_LANGUAGE = f"Python {sys.version_info.major}.{sys.version_info.minor}"
 AI_CACHE_TTL_SECONDS = 86400
+# Shared by every kind, so the temporal and spatial runs of the same code
+# cost one naming call
+ALGORITHM_NAME_CACHE_NAMESPACE = "algorithm_name"
 
 ReportT = TypeVar("ReportT")
 AIReportT = TypeVar("AIReportT")
@@ -50,10 +54,12 @@ class ComplexityAnalysisService(CacheMixin, ABC, Generic[ReportT, AIReportT]):
         cache: CacheService,
         ai: AIService,
         recorder: AnalysisRecorder | None = None,
+        namer: AlgorithmNamer | None = None,
     ):
         self.cache_service = cache
         self.ai_service = ai
         self.recorder = recorder or NullAnalysisRecorder()
+        self.namer = namer or NullAlgorithmNamer()
 
     async def run(
         self, request: AnalysisRequest, user_id: str | None
@@ -71,11 +77,12 @@ class ComplexityAnalysisService(CacheMixin, ABC, Generic[ReportT, AIReportT]):
 
         # Only signed-in users have a history; anonymous runs are not stored
         if user_id is not None:
+            title = request.title or await self._get_algorithm_name(code, fingerprint)
             await self._record(
                 AnalysisRecord(
                     user_id=user_id,
                     kind=self.kind,
-                    title=request.title,
+                    title=title,
                     language=ANALYZED_LANGUAGE,
                     code=code.value(),
                     complexity=self._notation(report),
@@ -109,6 +116,20 @@ class ComplexityAnalysisService(CacheMixin, ABC, Generic[ReportT, AIReportT]):
         ai_report = await self._explain(report)
         self.cache_service.set_cache(key, ai_report, ex_ttl=AI_CACHE_TTL_SECONDS)
         return ai_report
+
+    async def _get_algorithm_name(
+        self, code: NormalizedCode, fingerprint: Fingerprint
+    ) -> str | None:
+        key, cached = self.process_cache(ALGORITHM_NAME_CACHE_NAMESPACE, fingerprint)
+        if cached:
+            return cached["name"]
+
+        # The namer blocks (sync AI client) and swallows AI errors itself
+        name = await anyio.to_thread.run_sync(self.namer.name, code.value())
+        # Misses are not cached, so an AI outage doesn't stick for a day
+        if name is not None:
+            self.cache_service.set_cache(key, {"name": name}, ex_ttl=AI_CACHE_TTL_SECONDS)
+        return name
 
     async def _record(self, record: AnalysisRecord) -> None:
         # History is secondary: a failed write must never fail the analysis.

@@ -1,8 +1,8 @@
 from app.features.auth.models import UserModel
+from app.shared.ai.naming import AlgorithmNamer, NullAlgorithmNamer
 
 from .exceptions import FileExceptions
 from .models import FileModel
-from .naming import AlgorithmNamer, NullAlgorithmNamer
 from .repository import FileRepository
 from .schemas import FileDTOCreateRequest, FileDTOUpdateRequest
 

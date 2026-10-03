@@ -1,14 +1,14 @@
-"""Automatic algorithm names for files.
+"""Automatic algorithm names for files and analyses.
 
-`FileService` depends on the `AlgorithmNamer` port; the AI adapter lives here
-too because nothing else needs it. Naming is a nice-to-have: if the AI fails,
-the file is still saved, just without a name.
+`FileService` and the analysis services depend on the `AlgorithmNamer` port.
+Naming is a nice-to-have: if the AI fails, the file is still saved and the
+analysis still recorded, just without a name.
 """
 
 import logging
 from typing import Protocol
 
-from app.shared.ai.service import AIService
+from .service import AIService
 
 logger = logging.getLogger(__name__)
 

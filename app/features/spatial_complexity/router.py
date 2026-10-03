@@ -5,13 +5,16 @@ from .request import SpatialComplexityRequest
 from ..analytics.recorder import MongoAnalysisRecorder
 from ..auth.dependencies import OptionalClaims
 from ...shared.ai import AIService, create_ai_client
+from ...shared.ai.naming import AIAlgorithmNamer
 
 router = APIRouter()
 
 cache = CacheService(make_client())
 ai = AIService(create_ai_client())
 
-service = SpatialComplexityService(cache, ai, recorder=MongoAnalysisRecorder())
+service = SpatialComplexityService(
+    cache, ai, recorder=MongoAnalysisRecorder(), namer=AIAlgorithmNamer(ai)
+)
 
 
 @router.post("/spatial", status_code=status.HTTP_200_OK)
