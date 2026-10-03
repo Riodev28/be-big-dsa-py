@@ -91,6 +91,10 @@ class AuthService:
         data = TokenData(user_id=user.id, username=user.username, email=user.email)
 
         refresh = create_refresh_token(data)
-        self.refresh_tokens.create(jti=refresh.jti, user=user, expires_at=refresh.expires_at)
+        self.refresh_tokens.create(
+            jti=refresh.jti, user=user, expires_at=refresh.expires_at
+        )
 
-        return TokenPair(access_token=create_access_token(data), refresh_token=refresh.token)
+        return TokenPair(
+            access_token=create_access_token(data), refresh_token=refresh.token
+        )

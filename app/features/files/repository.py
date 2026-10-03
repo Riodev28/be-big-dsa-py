@@ -6,7 +6,6 @@ from .models import FileModel
 
 
 class FileRepository:
-
     def list_by_owner(self, owner: UserModel) -> list[FileModel]:
         return list(FileModel.objects(owner=owner))
 

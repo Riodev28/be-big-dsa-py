@@ -34,7 +34,9 @@ def refresh_token_lifetime() -> timedelta:
     return timedelta(days=settings.refresh_token_expire_days)
 
 
-def _create_token(data: TokenData, token_type: TokenType, lifetime: timedelta) -> IssuedToken:
+def _create_token(
+    data: TokenData, token_type: TokenType, lifetime: timedelta
+) -> IssuedToken:
     now = datetime.now(timezone.utc)
     expires_at = now + lifetime
     jti = str(uuid.uuid4())

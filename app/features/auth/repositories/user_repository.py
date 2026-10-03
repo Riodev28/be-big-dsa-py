@@ -18,4 +18,6 @@ class UserRepository:
         return UserModel.objects(email=email).count() > 0
 
     def create(self, username: str, email: str, hashed_password: str) -> UserModel:
-        return UserModel(username=username, email=email, password=hashed_password).save()
+        return UserModel(
+            username=username, email=email, password=hashed_password
+        ).save()

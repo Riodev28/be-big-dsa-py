@@ -28,7 +28,9 @@ def create_file(dto: FileDTOCreateRequest, user: CurrentUser) -> FileDTOResponse
 
 
 @router.put("/file/{id}", status_code=status.HTTP_202_ACCEPTED)
-def update_file(id: str, dto: FileDTOUpdateRequest, user: CurrentUser) -> FileDTOResponse:
+def update_file(
+    id: str, dto: FileDTOUpdateRequest, user: CurrentUser
+) -> FileDTOResponse:
     return FileDTOResponse.from_model(service.update(id, dto, user), user)
 
 

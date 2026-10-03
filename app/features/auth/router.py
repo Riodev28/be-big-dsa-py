@@ -50,14 +50,18 @@ def me(user: CurrentUser) -> UserResponse:
 
 
 @router.post("/login", status_code=status.HTTP_200_OK)
-def login(dto: LoginDTORequest, response: Response, service: AuthServiceDep) -> LoginDTOResponse:
+def login(
+    dto: LoginDTORequest, response: Response, service: AuthServiceDep
+) -> LoginDTOResponse:
     tokens = service.login(dto)
     _set_refresh_cookie(response, tokens.refresh_token)
     return LoginDTOResponse(access_token=tokens.access_token)
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
-def register(dto: RegisterDTORequest, response: Response, service: AuthServiceDep) -> RegisterDTOResponse:
+def register(
+    dto: RegisterDTORequest, response: Response, service: AuthServiceDep
+) -> RegisterDTOResponse:
     user, tokens = service.register(dto)
     _set_refresh_cookie(response, tokens.refresh_token)
     return RegisterDTOResponse(

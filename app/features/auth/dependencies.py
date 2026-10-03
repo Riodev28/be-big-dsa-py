@@ -8,7 +8,9 @@ from .repositories import RefreshTokenRepository, UserRepository
 from .security import get_claims
 from .services import AuthService
 
-auth_service = AuthService(users=UserRepository(), refresh_tokens=RefreshTokenRepository())
+auth_service = AuthService(
+    users=UserRepository(), refresh_tokens=RefreshTokenRepository()
+)
 
 
 def get_auth_service() -> AuthService:
