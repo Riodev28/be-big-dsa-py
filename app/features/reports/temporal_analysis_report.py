@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Any
 
-from app.shared.ast.complexity import VariableRef
+from app.shared.ast.complexity import ComplexityClass, VariableRef
 
 
 def _as_variable_ref(item: Any) -> VariableRef:
@@ -21,6 +21,7 @@ class TemporalAnalysisReport:
     variables: tuple[VariableRef, ...]
     loop_count: int
     recursion_kind: str | None
+    complexity_class: ComplexityClass
 
     @classmethod
     def from_cache(cls, data: dict[str, Any]) -> "TemporalAnalysisReport":
@@ -35,4 +36,5 @@ class TemporalAnalysisReport:
             ),
             loop_count=data.get("loop_count", 0),
             recursion_kind=data.get("recursion_kind"),
+            complexity_class=ComplexityClass(data["complexity_class"]),
         )

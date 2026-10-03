@@ -1,6 +1,5 @@
-from pydantic import BaseModel
+from ...shared.analysis import AnalysisRequest
 
 
-class TemporalComplexityRequest(BaseModel):
-    code: str
-    explain_ai: bool = False
+class TemporalComplexityRequest(AnalysisRequest):
+    pass

@@ -1,7 +1,5 @@
-from dataclasses import dataclass
+from ...shared.analysis import AnalysisRequest
 
 
-@dataclass
-class SpatialComplexityRequest:
-    code: str
-    explain_ai: bool
+class SpatialComplexityRequest(AnalysisRequest):
+    pass

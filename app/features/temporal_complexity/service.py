@@ -1,62 +1,39 @@
 from typing import Any
 
-from ...shared.ast.fingerprint import Fingerprint
+from ...shared.analysis import AnalysisKind, ComplexityAnalysisService
+from ...shared.ast.complexity import ComplexityClass
 from ...shared.ast.value_objects.normalized_code import NormalizedCode
-from ...shared.cache.mixin import CacheMixin
-from ...shared.cache.service import CacheService
-from ...shared.ai.service import AIService
-
+from ..reports import TemporalAIReport, TemporalAnalysisReport
 from .analyzer import TemporalComplexityAnalyzer
-from .request import TemporalComplexityRequest
 from .dto import TemporalComplexityResponseDTO
-
-from ..reports import (
-    TemporalAnalysisReport,
-    TemporalAIReport,
-)
+from .request import TemporalComplexityRequest
 
 
-class TemporalComplexityService(CacheMixin):
-    def __init__(self, cache_client: CacheService, ai_service: AIService):
-        self.cache_service = cache_client
-        self.ai_service = ai_service
+class TemporalComplexityService(
+    ComplexityAnalysisService[TemporalAnalysisReport, TemporalAIReport]
+):
+    kind = AnalysisKind.TEMPORAL
+    # v2: reports gained `complexity_class`, older cached entries lack it
+    cache_namespace = "temporal_complexity:v2"
+    ai_cache_namespace = "temporal_complexity_ai"
 
-    async def analyze(self, payload: TemporalComplexityRequest):
+    async def analyze(
+        self, payload: TemporalComplexityRequest, user_id: str | None = None
+    ) -> TemporalComplexityResponseDTO:
         """Orchestrate payload. Analyze time complexity result"""
-        normalized_code = NormalizedCode(payload.code)
+        outcome = await self.run(payload, user_id)
+        return TemporalComplexityResponseDTO(analysis=outcome.report, ai=outcome.ai)
 
-        fingerprint = Fingerprint(normalized_code)
+    def _analyze(self, code: NormalizedCode) -> TemporalAnalysisReport:
+        return TemporalComplexityAnalyzer(code).analyze()
 
-        analysis_key, cached_analysis = self.process_cache(
-            "temporal_complexity", fingerprint
-        )
+    def _report_from_cache(self, data: dict[str, Any]) -> TemporalAnalysisReport:
+        return TemporalAnalysisReport.from_cache(data)
 
-        if cached_analysis:
-            report = TemporalAnalysisReport.from_cache(cached_analysis)
+    def _ai_report_from_cache(self, data: dict[str, Any]) -> TemporalAIReport:
+        return TemporalAIReport(**data)
 
-        else:
-            report = TemporalComplexityAnalyzer(normalized_code).analyze()
-            self.cache_service.set_cache(analysis_key, report)
-
-        ai_report = None
-
-        if payload.explain_ai:
-            ai_key, cached_ai = self.process_cache(
-                "temporal_complexity_ai", fingerprint
-            )
-
-            ai_report = await self._handle_ai(
-                key=ai_key, cached=cached_ai, report=report
-            )
-
-        return TemporalComplexityResponseDTO(analysis=report, ai=ai_report)
-
-    async def _handle_ai(
-        self, key: str, cached: dict[str, Any] | None, report: TemporalAnalysisReport
-    ) -> TemporalAIReport | None:
-        if cached:
-            return TemporalAIReport(**cached)
-
+    async def _explain(self, report: TemporalAnalysisReport) -> TemporalAIReport:
         explanation = await self.ai_service.explain_temporal_complexity(
             time_complexity=report.time_complexity,
             max_loop_depth=report.max_loop_depth,
@@ -65,9 +42,10 @@ class TemporalComplexityService(CacheMixin):
             variables=report.variables,
             recursion_kind=report.recursion_kind,
         )
+        return TemporalAIReport(temporal_explanation=explanation)
 
-        ai_report = TemporalAIReport(temporal_explanation=explanation)
+    def _notation(self, report: TemporalAnalysisReport) -> str:
+        return report.time_complexity
 
-        self.cache_service.set_cache(key, ai_report, ex_ttl=86400)
-
-        return ai_report
+    def _complexity_class(self, report: TemporalAnalysisReport) -> ComplexityClass:
+        return report.complexity_class

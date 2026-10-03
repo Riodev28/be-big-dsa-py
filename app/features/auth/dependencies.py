@@ -5,7 +5,7 @@ from fastapi import Depends
 from .dataclasses import Claims
 from .models import UserModel
 from .repositories import RefreshTokenRepository, UserRepository
-from .security import get_claims
+from .security import get_claims, get_optional_claims
 from .services import AuthService
 
 auth_service = AuthService(
@@ -26,3 +26,5 @@ def get_current_user(
 
 CurrentUser = Annotated[UserModel, Depends(get_current_user)]
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
+CurrentClaims = Annotated[Claims, Depends(get_claims)]
+OptionalClaims = Annotated[Claims | None, Depends(get_optional_claims)]

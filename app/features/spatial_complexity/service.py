@@ -1,55 +1,39 @@
-from .request import SpatialComplexityRequest
-from ...shared.ai.service import AIService
-from ...shared.cache import CacheService
-from ...shared.ast import NormalizedCode, Fingerprint
-from .dto import SpatialComplexityResponseDTO
-from ...shared.cache.mixin import CacheMixin
-from ..reports import SpatialAnalysisReport, SpatialAiReport
 from typing import Any
+
+from ...shared.analysis import AnalysisKind, ComplexityAnalysisService
+from ...shared.ast import NormalizedCode
+from ...shared.ast.complexity import ComplexityClass
+from ..reports import SpatialAiReport, SpatialAnalysisReport
 from .analyzer import SpatialComplexityAnalyzer
+from .dto import SpatialComplexityResponseDTO
+from .request import SpatialComplexityRequest
 
 
-class SpatialComplexityService(CacheMixin):
-    def __init__(self, cache: CacheService, ai: AIService):
-        self.cache_service = cache
-        self.ai_service = ai
+class SpatialComplexityService(
+    ComplexityAnalysisService[SpatialAnalysisReport, SpatialAiReport]
+):
+    kind = AnalysisKind.SPATIAL
+    # v2: reports gained `complexity_class`, older cached entries lack it
+    cache_namespace = "spatial_complexity:v2"
+    ai_cache_namespace = "spatial_complexity_ai"
 
     async def analyze(
-        self, payload: SpatialComplexityRequest
+        self, payload: SpatialComplexityRequest, user_id: str | None = None
     ) -> SpatialComplexityResponseDTO:
         """Orchestrate payload. Analyze spatial complexity result"""
-        normalized_code = NormalizedCode(payload.code)
+        outcome = await self.run(payload, user_id)
+        return SpatialComplexityResponseDTO(analysis=outcome.report, ai=outcome.ai)
 
-        fingerprint = Fingerprint(normalized_code)
+    def _analyze(self, code: NormalizedCode) -> SpatialAnalysisReport:
+        return SpatialComplexityAnalyzer(code).analyze()
 
-        analysis_key, cached_analysis = self.process_cache(
-            "spatial_complexity", fingerprint
-        )
+    def _report_from_cache(self, data: dict[str, Any]) -> SpatialAnalysisReport:
+        return SpatialAnalysisReport.from_cache(data)
 
-        if cached_analysis:
-            report = SpatialAnalysisReport.from_cache(cached_analysis)
+    def _ai_report_from_cache(self, data: dict[str, Any]) -> SpatialAiReport:
+        return SpatialAiReport(**data)
 
-        else:
-            report = SpatialComplexityAnalyzer(normalized_code).analyze()
-            self.cache_service.set_cache(analysis_key, report)
-
-        ai_report = None
-
-        if payload.explain_ai:
-            ai_key, cached_ai = self.process_cache("spatial_complexity_ai", fingerprint)
-
-            ai_report = await self._handle_ai(
-                key=ai_key, cached=cached_ai, report=report
-            )
-
-        return SpatialComplexityResponseDTO(analysis=report, ai=ai_report)
-
-    async def _handle_ai(
-        self, key: str, cached: dict[str, Any] | None, report: SpatialAnalysisReport
-    ) -> SpatialAnalysisReport | None:
-        if cached:
-            return SpatialAiReport(**cached)
-
+    async def _explain(self, report: SpatialAnalysisReport) -> SpatialAiReport:
         explanation = await self.ai_service.explain_spatial_complexity(
             space_complexity=report.space_complexity,
             total_allocations=report.total_allocations,
@@ -64,9 +48,10 @@ class SpatialComplexityService(CacheMixin):
             variables=report.variables,
             recursion_kind=report.recursion_kind,
         )
+        return SpatialAiReport(spatial_explanation=explanation)
 
-        ai_report = SpatialAiReport(spatial_explanation=explanation)
+    def _notation(self, report: SpatialAnalysisReport) -> str:
+        return report.space_complexity
 
-        self.cache_service.set_cache(key, ai_report, ex_ttl=86400)
-
-        return ai_report
+    def _complexity_class(self, report: SpatialAnalysisReport) -> ComplexityClass:
+        return report.complexity_class

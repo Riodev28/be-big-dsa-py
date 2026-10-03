@@ -1,5 +1,5 @@
 from ...shared.ast import NormalizedCode, Parser
-from ...shared.ast.complexity import analyze_space_complexity
+from ...shared.ast.complexity import analyze_space_complexity, classify
 from ...shared.ast.visitors import (
     AllocationVisitors,
     DynamicGrowthVisitor,
@@ -53,4 +53,5 @@ class SpatialComplexityAnalyzer:
             terms=result.complexity.term_strings(),
             variables=result.variables,
             recursion_kind=result.recursion_kind,
+            complexity_class=classify(result.complexity),
         )

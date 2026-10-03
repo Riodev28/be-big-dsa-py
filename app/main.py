@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from .features.temporal_complexity.router import router as temporal_router
 from app.features.auth.router import router as user_router
 from app.features.files.router import router as files_router
+from app.features.analytics.router import router as analytics_router
 from .features.spatial_complexity.router import router as spatial_router
 from .core import setup_middlewares
 from contextlib import asynccontextmanager
@@ -33,6 +34,7 @@ app.include_router(temporal_router, prefix=f"{API_PREFIX}{ANALYZE_PREFIX}")
 app.include_router(spatial_router, prefix=f"{API_PREFIX}{ANALYZE_PREFIX}")
 app.include_router(user_router, prefix=API_PREFIX)
 app.include_router(files_router, prefix=API_PREFIX)
+app.include_router(analytics_router, prefix=API_PREFIX)
 
 
 
