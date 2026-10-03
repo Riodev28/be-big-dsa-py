@@ -1,13 +1,19 @@
-import jwt
-import bcrypt
-from datetime import datetime, timedelta, timezone
-from typing import Any
-from app.core.config import settings
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from fastapi import Depends, status
-from .dataclasses import Claims, TokenData
-from fastapi.exceptions import HTTPException
+import uuid
 from dataclasses import asdict
+from datetime import datetime, timedelta, timezone
+from typing import Any, Literal
+
+import bcrypt
+import jwt
+from fastapi import Depends
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
+from app.core.config import settings
+
+from .dataclasses import Claims, IssuedToken, TokenData
+from .exceptions import AuthExceptions
+
+TokenType = Literal["access", "refresh"]
 
 bearer = HTTPBearer()
 
@@ -20,51 +26,77 @@ def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 
-def create_access_token(data: TokenData, expires_delta: timedelta | None = None) -> str:
-    """Create the access token for user"""
-    to_encode = asdict(data)
-    now = datetime.now(timezone.utc)
-    expire = now + (expires_delta or timedelta(minutes=15))
-    to_encode.update({"exp": expire})
-
-    return jwt.encode(
-        payload=to_encode,
-        key=settings.jwt_secret_key.get_secret_value(),
-        algorithm=settings.algorithm,
-    )
-
-
-def time_token_expires() -> timedelta:
+def access_token_lifetime() -> timedelta:
     return timedelta(minutes=settings.token_expire)
 
 
-def decode_token(token: str) -> dict[str, Any]:
-    return jwt.decode(
+def refresh_token_lifetime() -> timedelta:
+    return timedelta(days=settings.refresh_token_expire_days)
+
+
+def _create_token(
+    data: TokenData, token_type: TokenType, lifetime: timedelta
+) -> IssuedToken:
+    now = datetime.now(timezone.utc)
+    expires_at = now + lifetime
+    jti = str(uuid.uuid4())
+    payload = {
+        **asdict(data),
+        "type": token_type,
+        "iat": now,
+        "exp": expires_at,
+        "jti": jti,
+    }
+    token = jwt.encode(
+        payload,
+        settings.jwt_secret_key.get_secret_value(),
+        algorithm=settings.algorithm,
+    )
+    return IssuedToken(token=token, jti=jti, expires_at=expires_at)
+
+
+def create_access_token(data: TokenData) -> str:
+    return _create_token(data, "access", access_token_lifetime()).token
+
+
+def create_refresh_token(data: TokenData) -> IssuedToken:
+    return _create_token(data, "refresh", refresh_token_lifetime())
+
+
+def decode_token(token: str, expected_type: TokenType) -> dict[str, Any]:
+    """
+    Raises jwt.ExpiredSignatureError / jwt.InvalidTokenError on bad tokens,
+    including a valid token of the wrong type (refresh used as access, etc).
+    """
+    payload = jwt.decode(
         jwt=token,
         key=settings.jwt_secret_key.get_secret_value(),
         algorithms=[settings.algorithm],
+        options={"require": ["exp", "jti", "type"]},
     )
+
+    if payload.get("type") != expected_type:
+        raise jwt.InvalidTokenError("Wrong token type")
+
+    return payload
 
 
 def get_claims(credentials: HTTPAuthorizationCredentials = Depends(bearer)) -> Claims:
     try:
-        payload = decode_token(credentials.credentials)
+        payload = decode_token(credentials.credentials, expected_type="access")
     except jwt.ExpiredSignatureError:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Token expired")
+        raise AuthExceptions.token_expired()
     except jwt.InvalidTokenError:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid token")
+        raise AuthExceptions.invalid_token()
 
-    user_id: str = payload.get("user_id")
-    username: str = payload.get("username")
-    email: str = payload.get("email")
-
-    exp = payload.get("exp")
-    if email is None or exp is None:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid token claims")
+    user_id = payload.get("user_id")
+    email = payload.get("email")
+    if user_id is None or email is None:
+        raise AuthExceptions.invalid_token()
 
     return Claims(
         user_id=user_id,
-        username=username,
+        username=payload.get("username", ""),
         email=email,
-        expires_at=datetime.fromtimestamp(exp, tz=timezone.utc),
+        expires_at=datetime.fromtimestamp(payload["exp"], tz=timezone.utc),
     )

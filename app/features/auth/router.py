@@ -1,73 +1,96 @@
-from fastapi import APIRouter, status, Depends
-from .controllers import UserController, FileController
+from fastapi import APIRouter, Cookie, Response, status
 
+from .dependencies import AuthServiceDep, CurrentUser
+from .exceptions import AuthExceptions
 from .schemas import (
     LoginDTORequest,
-    RegisterDTORequest,
-    UserResponse,
-    RegisterDTOReponse,
     LoginDTOResponse,
-    FileDTOResponse,
-    FileDTOCreateRequest,
-    FileDTOUpdateRequest,
+    RefreshTokenDTOResponse,
+    RegisterDTORequest,
+    RegisterDTOResponse,
+    UserResponse,
 )
+from .security import refresh_token_lifetime
 
-from .repositories import UserRepository, FileRepository
-
-from fastapi.security import HTTPBearer
-from .security import get_claims
-from .dataclasses import Claims
+# Handlers are sync on purpose: mongoengine blocks, so FastAPI runs them in
+# its threadpool instead of stalling the event loop.
 
 router = APIRouter()
-security = HTTPBearer()
 
-user_repository = UserRepository()
-controller = UserController(repository=user_repository)
+REFRESH_COOKIE = "refresh_token"
+# Must cover the mounted /refresh and /logout routes (router lives under /api)
+REFRESH_COOKIE_PATH = "/api"
 
-file_repository = FileRepository()
-file_controller = FileController(repository=file_repository, user_repo=user_repository)
+
+def _set_refresh_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        key=REFRESH_COOKIE,
+        value=token,
+        httponly=True,
+        secure=True,
+        samesite="strict",
+        path=REFRESH_COOKIE_PATH,
+        max_age=int(refresh_token_lifetime().total_seconds()),
+    )
+
+
+def _clear_refresh_cookie(response: Response) -> None:
+    response.delete_cookie(
+        key=REFRESH_COOKIE,
+        path=REFRESH_COOKIE_PATH,
+        httponly=True,
+        secure=True,
+        samesite="strict",
+    )
 
 
 @router.get("/me", status_code=status.HTTP_200_OK)
-async def me(claims: Claims = Depends(get_claims)) -> UserResponse:
-    return await controller.me(claims=claims)
+def me(user: CurrentUser) -> UserResponse:
+    return UserResponse(id=user.id, username=user.username, email=user.email)
 
 
 @router.post("/login", status_code=status.HTTP_200_OK)
-async def login(dto: LoginDTORequest) -> LoginDTOResponse:
-    return await controller.login(dto=dto)
+def login(
+    dto: LoginDTORequest, response: Response, service: AuthServiceDep
+) -> LoginDTOResponse:
+    tokens = service.login(dto)
+    _set_refresh_cookie(response, tokens.refresh_token)
+    return LoginDTOResponse(access_token=tokens.access_token)
 
 
-@router.post("/register", status_code=status.HTTP_200_OK)
-async def register(dto: RegisterDTORequest) -> RegisterDTOReponse:
-    return await controller.register(dto=dto)
+@router.post("/register", status_code=status.HTTP_201_CREATED)
+def register(
+    dto: RegisterDTORequest, response: Response, service: AuthServiceDep
+) -> RegisterDTOResponse:
+    user, tokens = service.register(dto)
+    _set_refresh_cookie(response, tokens.refresh_token)
+    return RegisterDTOResponse(
+        username=user.username,
+        email=user.email,
+        access_token=tokens.access_token,
+    )
 
 
-@router.get("/files", status_code=status.HTTP_200_OK)
-async def files(claims: Claims = Depends(get_claims)) -> list[FileDTOResponse]:
-    user_id = claims.user_id
-    return await file_controller.index(user_id=user_id)
+@router.post("/refresh", status_code=status.HTTP_200_OK)
+def refresh(
+    response: Response,
+    service: AuthServiceDep,
+    refresh_token: str | None = Cookie(default=None),
+) -> RefreshTokenDTOResponse:
+    if not refresh_token:
+        raise AuthExceptions.missing_refresh_token()
+
+    tokens = service.refresh(refresh_token)
+    _set_refresh_cookie(response, tokens.refresh_token)
+    return RefreshTokenDTOResponse(access_token=tokens.access_token)
 
 
-@router.get("/file/{id}", status_code=status.HTTP_200_OK)
-async def get_file(id: str, claims: Claims = Depends(get_claims)) -> FileDTOResponse:
-    return await file_controller.detail(id=id, user_id=claims.user_id)
-
-
-@router.post("/file", status_code=status.HTTP_201_CREATED)
-async def create_file(
-    dto: FileDTOCreateRequest, claims: Claims = Depends(get_claims)
-) -> FileDTOResponse:
-    return await file_controller.create(dto=dto, user_id=claims.user_id)
-
-
-@router.put("/file/{id}", status_code=status.HTTP_202_ACCEPTED)
-async def update_file(
-    id: str, dto: FileDTOUpdateRequest, claims: Claims = Depends(get_claims)
-) -> FileDTOResponse:
-    return await file_controller.update(id=id, dto=dto, user_id=claims.user_id)
-
-
-@router.delete("/file/{id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_file(id: str, claims: Claims = Depends(get_claims)) -> None:
-    await file_controller.delete(id=id, user_id=claims.user_id)
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+def logout(
+    response: Response,
+    service: AuthServiceDep,
+    refresh_token: str | None = Cookie(default=None),
+) -> None:
+    if refresh_token:
+        service.logout(refresh_token)
+    _clear_refresh_cookie(response)

@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     jwt_secret_key: SecretStr
     algorithm: str = "HS512"
     token_expire: int = 30
+    refresh_token_expire_days: int = 7
 
     class Config:
         env_file = ".env"

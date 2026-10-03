@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
-from .models import UserModel
-from app.shared.ast.value_objects import NormalizedCode
+
 
 
 @dataclass(frozen=True)
@@ -22,15 +21,14 @@ class TokenData:
         self.user_id = str(self.user_id)
 
 
-@dataclass
-class CreateFileRequest:
-    title: str
-    content: NormalizedCode
-    user: UserModel
+@dataclass(frozen=True)
+class IssuedToken:
+    token: str
+    jti: str
+    expires_at: datetime
 
 
-@dataclass
-class UpdateFileRequest:
-    title: str
-    content: NormalizedCode
-    user: UserModel
+@dataclass(frozen=True)
+class TokenPair:
+    access_token: str
+    refresh_token: str
