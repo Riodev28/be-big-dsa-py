@@ -6,6 +6,7 @@ from app.shared.helpers.datetime_helper import utcnow
 
 class FileModel(Document):
     title = StringField(max_length=100)
+    algorithm_name = StringField(max_length=100)
     content = StringField()
 
     created_at = DateTimeField(default=utcnow)
