@@ -35,6 +35,7 @@ app.include_router(user_router, prefix=API_PREFIX)
 app.include_router(files_router, prefix=API_PREFIX)
 
 
+
 @app.get("/api/health")
 async def health():
     db_ok = await db.ping()
